@@ -1,0 +1,167 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #16130e;
+  --color-ink-2: #241f18;
+  --color-haldi: #e0a52b;
+  --color-haldi-2: #f0c86b;
+  --color-haldi-deep: #a06e12;
+  --color-neem: #2bd97c;
+  --color-neem-2: #0e7a43;
+  --color-sindoor: #ff4a1c;
+  --color-bone: #f6f1e7;
+  --color-paper: #fffdf6;
+
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+html {
+  scroll-padding-top: 5rem;
+  overflow-x: clip;
+}
+
+html:not(.lenis) {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  text-rendering: optimizeLegibility;
+  /* `clip` (not `hidden`) contains the pre-reveal translateX offsets without
+     creating a scroll container, so sticky and ScrollTrigger pins still work. */
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--color-neem);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-sindoor);
+  outline-offset: 3px;
+}
+
+.noise {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.lenis [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
+
+.js [data-reveal] {
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.js [data-reveal="up"] {
+  transform: translateY(28px);
+}
+
+.js [data-reveal="left"] {
+  transform: translateX(-32px);
+}
+
+.js [data-reveal="right"] {
+  transform: translateX(32px);
+}
+
+.js [data-reveal="scale"] {
+  transform: scale(0.94);
+}
+
+.js [data-reveal="clip"] {
+  transform: none;
+  clip-path: inset(0 0 100% 0);
+}
+
+.split-line {
+  display: block;
+  overflow: hidden;
+}
+
+.split-word {
+  display: inline-block;
+  will-change: transform;
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+
+@keyframes fadeup {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fadeup {
+  animation: fadeup 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes dashflow {
+  to {
+    stroke-dashoffset: -600;
+  }
+}
+
+.ring-dash {
+  animation: dashflow 30s linear infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.caret {
+  animation: blink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  [data-reveal],
+  [data-reveal="clip"] {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+  }
+
+  .marquee-track,
+  .ring-dash {
+    animation: none !important;
+  }
+}
