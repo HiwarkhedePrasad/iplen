@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import {
+  BackgroundTone,
   Cursor,
   MagneticLayer,
   ScrollProgress,
@@ -65,6 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col">
         <SmoothScroll />
         <ScrollProgress />
+        <BackgroundTone />
         <Cursor />
         <MagneticLayer />
         <SectionSpy ids={WATCHED} />

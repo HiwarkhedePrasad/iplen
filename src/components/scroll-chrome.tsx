@@ -49,6 +49,10 @@ export function ScrollProgress() {
   );
 }
 
+function closestFrom(target: EventTarget | null, selector: string) {
+  return target instanceof Element ? target.closest<HTMLElement>(selector) : null;
+}
+
 /**
  * Applies magnetic pull to every descendant carrying `data-magnetic`, so each
  * call site stays a plain server-rendered anchor.
@@ -58,8 +62,7 @@ export function MagneticLayer() {
     if (reduceMotion() || !finePointer()) return;
 
     const move = (e: MouseEvent) => {
-      const t = e.target as HTMLElement | null;
-      const el = t?.closest<HTMLElement>("[data-magnetic]");
+      const el = closestFrom(e.target, "[data-magnetic]");
       if (!el) return;
       const r = el.getBoundingClientRect();
       gsap.to(el, {
@@ -71,37 +74,32 @@ export function MagneticLayer() {
       });
     };
 
-    const leave = (e: MouseEvent) => {
-      const t = e.target as HTMLElement | null;
-      const el = t?.closest<HTMLElement>("[data-magnetic]");
-      if (!el) return;
-      gsap.to(el, { x: 0, y: 0, duration: 0.7, ease: "power3.out", overwrite: true });
+    const leave = () => {
+      gsap.utils.toArray<HTMLElement>("[data-magnetic]").forEach((el) => {
+        gsap.to(el, { x: 0, y: 0, scale: 1, duration: 0.7, ease: "power3.out", overwrite: true });
+      });
     };
 
     const onOver = (e: MouseEvent) => {
-      const el = (e.target as HTMLElement | null)?.closest<HTMLElement>(
-        "[data-magnetic]",
-      );
+      const el = closestFrom(e.target, "[data-magnetic]");
       if (!el) return;
       gsap.to(el, { scale: 1.03, duration: 0.4, ease: "power3.out", overwrite: "auto" });
     };
 
     const onOut = (e: MouseEvent) => {
-      const el = (e.target as HTMLElement | null)?.closest<HTMLElement>(
-        "[data-magnetic]",
-      );
+      const el = closestFrom(e.target, "[data-magnetic]");
       if (!el) return;
       gsap.to(el, { scale: 1, duration: 0.5, ease: "power3.out", overwrite: "auto" });
     };
 
     window.addEventListener("mousemove", move, { passive: true });
-    document.addEventListener("mouseleave", leave);
+    document.documentElement.addEventListener("mouseleave", leave);
     document.addEventListener("mouseover", onOver);
     document.addEventListener("mouseout", onOut);
 
     return () => {
       window.removeEventListener("mousemove", move);
-      document.removeEventListener("mouseleave", leave);
+      document.documentElement.removeEventListener("mouseleave", leave);
       document.removeEventListener("mouseover", onOver);
       document.removeEventListener("mouseout", onOut);
       gsap.utils.toArray<HTMLElement>("[data-magnetic]").forEach((el) =>
@@ -135,9 +133,7 @@ export function Cursor() {
       dy(e.clientY);
     };
     const onOver = (e: MouseEvent) => {
-      const el = (e.target as HTMLElement | null)?.closest<HTMLElement>(
-        "a, button, [data-magnetic]",
-      );
+      const el = closestFrom(e.target, "a, button, [data-magnetic]");
       gsap.to(ring.current, {
         scale: el ? 1.9 : 1,
         borderColor: el ? "var(--color-sindoor)" : "var(--color-ink)",
@@ -173,6 +169,101 @@ export function Cursor() {
       />
     </div>
   );
+}
+
+/**
+ * Publishes `data-bg="light|dark"` on <html> for whichever top-level surface
+ * sits behind the fixed chrome, so overlays (the chapter rail) can pick a
+ * readable colour. Reads the real computed background and caches per surface,
+ * so no layout or style work happens on frames where nothing changed.
+ */
+export function BackgroundTone() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const surfaces: { top: number; dark: boolean }[] = [];
+    let current: boolean | null = null;
+
+    const luminance = (el: HTMLElement): number | null => {
+      const value = getComputedStyle(el).backgroundColor;
+      const match = value.match(/rgba?\(([^)]+)\)/);
+      if (!match) return null;
+      const [r, g, b, a = 1] = match[1].split(",").map((p) => parseFloat(p.trim()));
+      if (a < 0.05) return null;
+      return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    };
+
+    // Own background, else its first child (a pinned inner element's wrapper is
+    // transparent), else walk up. Keeps working if section colors change.
+    const surfaceLuminance = (el: HTMLElement): number => {
+      const own = luminance(el);
+      if (own !== null) return own;
+      if (el.firstElementChild instanceof HTMLElement) {
+        const child = luminance(el.firstElementChild);
+        if (child !== null) return child;
+      }
+      return el.parentElement instanceof HTMLElement
+        ? surfaceLuminance(el.parentElement)
+        : 1;
+    };
+
+    const measure = () => {
+      surfaces.length = 0;
+      const nodes = document.querySelectorAll<HTMLElement>("main > *, body > footer");
+      nodes.forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.height === 0) return;
+        const top = r.top + window.scrollY;
+        surfaces.push({ top, dark: surfaceLuminance(el) < 0.5 });
+      });
+    };
+
+    const apply = (scrollY: number) => {
+      const y = scrollY + window.innerHeight / 2;
+      // The last surface that began at or before the midpoint. Resolving this
+      // way is direction-independent and keeps thin bands (the marquee strip)
+      // from flipping the tone for a few pixels of scroll.
+      let chosen: (typeof surfaces)[number] | null = null;
+      for (const s of surfaces) {
+        if (y < s.top) break;
+        chosen = s;
+      }
+      chosen ??= surfaces[0];
+      if (!chosen || current === chosen.dark) return;
+      current = chosen.dark;
+      root.dataset.bg = chosen.dark ? "dark" : "light";
+    };
+
+    measure();
+    apply(window.scrollY);
+
+    const trigger = ScrollTrigger.create({
+      start: 0,
+      end: "max",
+      onUpdate: (self) => apply(self.scroll()),
+      onRefresh: () => {
+        measure();
+        apply(window.scrollY);
+      },
+    });
+
+    const observer = new ResizeObserver(() => {
+      measure();
+      apply(window.scrollY);
+    });
+    observer.observe(document.body);
+    document.fonts?.ready.then(() => {
+      measure();
+      apply(window.scrollY);
+    });
+
+    return () => {
+      trigger.kill();
+      observer.disconnect();
+      delete root.dataset.bg;
+    };
+  }, []);
+
+  return null;
 }
 
 /**

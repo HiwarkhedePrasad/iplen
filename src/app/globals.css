@@ -93,6 +93,43 @@ body {
   will-change: transform;
 }
 
+/* The chapter rail is fixed, so it has to recolour for whichever surface is
+   behind it. BackgroundTone keeps `data-bg` on <html> in sync.
+   Idle tints stay high-opacity on purpose: a mid-tone backdrop (the haldi hero)
+   gives translucent text almost no contrast, so "inactive" is carried by the
+   label reveal and dash scale rather than by washing the colour out. */
+.section-rail,
+.section-rail a {
+  transition:
+    color 500ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 300ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.section-rail a {
+  color: color-mix(in srgb, var(--color-ink) 90%, transparent);
+}
+
+.section-rail a:hover,
+.section-rail a[data-active="true"] {
+  color: var(--color-ink);
+}
+
+[data-bg="dark"] .section-rail a {
+  color: color-mix(in srgb, var(--color-bone) 75%, transparent);
+}
+
+[data-bg="dark"] .section-rail a:hover {
+  color: var(--color-bone);
+}
+
+[data-bg="dark"] .section-rail a[data-active="true"] {
+  color: var(--color-bone);
+}
+
+[data-bg="dark"] .section-rail a[data-active="true"] .rail-dash {
+  background-color: var(--color-haldi);
+}
+
 @keyframes marquee {
   to {
     transform: translateX(-50%);
